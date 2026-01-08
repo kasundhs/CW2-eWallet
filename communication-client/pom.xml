@@ -41,6 +41,11 @@
             <artifactId>communication-tutorial-server</artifactId>
             <version>1.0-SNAPSHOT</version>
         </dependency>
+        <dependency>
+            <groupId>org.example</groupId>
+            <artifactId>naming</artifactId>
+            <version>1.0-SNAPSHOT</version>
+        </dependency>
     </dependencies>
     <build>
         <plugins>
