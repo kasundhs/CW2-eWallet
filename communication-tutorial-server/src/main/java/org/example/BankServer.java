@@ -21,13 +21,13 @@ public class BankServer {
     private byte[] leaderData;
     private Map<String, Double> accounts = new HashMap();
 
-    public BankServer(String host, int port) throws InterruptedException, IOException, KeeperException {
-        this.serverPort = port;
-        leaderLock = new DistributedLock("BankServerTestCluster", buildServerData(host, port));
-        nameServiceClient = new NameServiceClient(NAME_SERVICE_ADDRESS);
-    }
+    DistributedTx transaction;
+    SetBalanceServiceImpl setBalanceService;
+    CheckBalanceServiceImpl checkBalanceService;
+
     public static void main (String[] args) throws Exception{
         DistributedLock.setZooKeeperURL("localhost:2181");
+        DistributedTx.setZookeeperUrl("localhost:2181");
         int serverPort;
         if (args.length != 1) {
             System.out.println("Usage BankServer <port>");
@@ -37,6 +37,20 @@ public class BankServer {
         BankServer server = new BankServer("localhost", serverPort);
         server.startServer();
     }
+    public BankServer(String host, int port) throws InterruptedException, IOException, KeeperException {
+        this.serverPort = port;
+        leaderLock = new DistributedLock("BankServerTestCluster", buildServerData(host, port));
+        nameServiceClient = new NameServiceClient(NAME_SERVICE_ADDRESS);
+        setBalanceService = new SetBalanceServiceImpl(this);
+        checkBalanceService = new CheckBalanceServiceImpl(this);
+        transaction = new DistributedTxParticipant(setBalanceService);
+    }
+
+    public DistributedTx getTransaction() {
+        return transaction;
+    }
+
+
     public static String buildServerData(String IP, int port) {
         StringBuilder builder = new StringBuilder();
         builder.append(IP).append(":").append(port);
@@ -67,8 +81,8 @@ public class BankServer {
                     leader = leaderLock.tryAcquireLock();
                 }
                 System.out.println("I got the leader lock. Now acting as primary");
-                        isLeader.set(true);
                 currentLeaderData = null;
+                beTheLeader();
             } catch (Exception e){
             }
         }
@@ -81,8 +95,8 @@ public class BankServer {
     public void startServer() throws IOException, InterruptedException, KeeperException {
         Server server = ServerBuilder
                 .forPort(serverPort)
-                .addService(new CheckBalanceServiceImpl(this))
-                .addService(new SetBalanceServiceImpl(this))
+                .addService(checkBalanceService)
+                .addService(setBalanceService)
                 .build();
         server.start();
         System.out.println("BankServer Started and ready to accept requests on port " + serverPort);
@@ -102,6 +116,7 @@ public class BankServer {
     }
     public double getAccountBalance(String accountId) {
         Double value = accounts.get(accountId);
+        System.out.println("Map Size is : "+accounts.size());
         return (value != null) ? value : 0.0;
     }
     public synchronized String[] getCurrentLeaderData() {
@@ -115,6 +130,11 @@ public class BankServer {
             result.add(dataStrings);
         }
         return result;
+    }
+    private void beTheLeader() {
+        System.out.println("I got the leader lock. Now acting as primary");
+        isLeader.set(true);
+        transaction = new DistributedTxCoordinator(setBalanceService);
     }
 
 }
