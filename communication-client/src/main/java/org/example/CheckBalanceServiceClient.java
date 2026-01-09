@@ -43,6 +43,7 @@ public class CheckBalanceServiceClient {
                 .usePlaintext()
                 .build();
         clientStub = CheckBalanceServiceGrpc.newBlockingStub(channel);
+        setBalanceClient = SetBalanceServiceGrpc.newBlockingStub(channel);
         channel.getState(true);
     }
     private void closeConnection() {
