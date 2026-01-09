@@ -1,11 +1,20 @@
 package org.example;
 
-import ds.tutorial.communication.grpc.generated.BalanceServiceGrpc;
 import ds.tutorial.communication.grpc.generated.CheckBalanceResponse;
+import ds.tutorial.communication.grpc.generated.CheckBalanceServiceGrpc;
 
 import java.util.Random;
 
-public class BalanceServiceImpl extends BalanceServiceGrpc.BalanceServiceImplBase {
+public class CheckBalanceServiceImpl extends CheckBalanceServiceGrpc.CheckBalanceServiceImplBase {
+    private BankServer server;
+    public CheckBalanceServiceImpl(BankServer server){
+        this.server = server;
+    }
+    private double getAccountBalance(String accountId) {
+        return server.getAccountBalance(accountId);
+    }
+
+
     @Override
     public void checkBalance(ds.tutorial.communication.grpc.generated.CheckBalanceRequest request,
                              io.grpc.stub.StreamObserver<ds.tutorial.communication.grpc.generated.CheckBalanceResponse> responseObserver) {
@@ -18,9 +27,5 @@ public class BalanceServiceImpl extends BalanceServiceGrpc.BalanceServiceImplBas
         System.out.println("Responding, balance for account " + accountId + " is " + balance);
         responseObserver.onNext(response);
         responseObserver.onCompleted();
-    }
-    private double getAccountBalance(String accountId) {
-        System.out.println("Checking balance for Account " + accountId);
-        return new Random().nextDouble() * 10000;
     }
 }
