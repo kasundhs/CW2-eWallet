@@ -36,9 +36,8 @@ public class SetUpdateServiceImpl extends SetUpdateServiceGrpc.SetUpdateServiceI
         if (server.isLeader()) {
             try {
                 System.out.println("Leader handling transfer");
-                String txId = UUID.randomUUID().toString();
-                startDistributedTx(fromAcc, toAcc, value, txId);
-                updateSecondaryServers(fromAcc, toAcc, value, txId);
+                startDistributedTx(fromAcc, toAcc, value);
+                updateSecondaryServers(fromAcc, toAcc, value);
                 transactionStatus = ((DistributedTxCoordinator) server.getTransferTransaction()).perform();
                 System.out.println("Transaction Status : "+transactionStatus);
             } catch (Exception e) {
@@ -48,7 +47,7 @@ public class SetUpdateServiceImpl extends SetUpdateServiceGrpc.SetUpdateServiceI
             try{
                 if (request.getIsSentByPrimary()) {
                     System.out.println("Secondary received transfer request");
-                    startDistributedTx(fromAcc, toAcc, value,request.getTransactionId());
+                    startDistributedTx(fromAcc, toAcc, value);
 
                     double fromBalance = server.getAccountBalance(fromAcc);
                     if (fromBalance >= value) {
@@ -74,7 +73,8 @@ public class SetUpdateServiceImpl extends SetUpdateServiceGrpc.SetUpdateServiceI
         responseObserver.onCompleted();
     }
 
-    private void startDistributedTx(String fromAcc, String toAcc, double value, String txId) throws IOException {
+    private void startDistributedTx(String fromAcc, String toAcc, double value) throws IOException {
+        String txId = UUID.randomUUID().toString();
         server.getTransferTransaction().start(fromAcc + "->" + toAcc, txId);
         fromUpdate = new Pair<>(fromAcc, -value);
         toUpdate = new Pair<>(toAcc, value);
@@ -91,14 +91,14 @@ public class SetUpdateServiceImpl extends SetUpdateServiceGrpc.SetUpdateServiceI
         toUpdate = null;
     }
 
-    private void updateSecondaryServers(String fromAcc, String toAcc, double value, String txId)
+    private void updateSecondaryServers(String fromAcc, String toAcc, double value)
             throws KeeperException, InterruptedException {
 
         List<String[]> othersData = server.getOthersData();
         for (String[] data : othersData) {
             String IPAddress = data[0];
             int port = Integer.parseInt(data[1]);
-            callServer(fromAcc, toAcc, value, true, txId, IPAddress, port);
+            callServer(fromAcc, toAcc, value, true, IPAddress, port);
         }
     }
 
@@ -127,29 +127,7 @@ public class SetUpdateServiceImpl extends SetUpdateServiceGrpc.SetUpdateServiceI
         return stub.setUpdate(request);
     }
 
-    private SetUpdateResponse callServer(String fromAcc, String toAcc, double value,
-                                         boolean isSentByPrimary,
-                                         String txId,
-                                         String ip, int port) {
 
-        ManagedChannel channel = ManagedChannelBuilder
-                .forAddress(ip, port)
-                .usePlaintext()
-                .build();
-
-        SetUpdateServiceGrpc.SetUpdateServiceBlockingStub stub =
-                SetUpdateServiceGrpc.newBlockingStub(channel);
-
-        SetUpdateRequest request = SetUpdateRequest.newBuilder()
-                .setFromAccId(fromAcc)
-                .setToAccId(toAcc)
-                .setValue(value)
-                .setIsSentByPrimary(isSentByPrimary)
-                .setTransactionId(txId)
-                .build();
-
-        return stub.setUpdate(request);
-    }
 
     @Override
     public void onGlobalCommit() {
