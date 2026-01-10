@@ -22,3 +22,17 @@ bool status = 1;
 service SetBalanceService {
 rpc setBalance(SetBalanceRequest) returns (SetBalanceResponse);
 }
+
+message SetUpdateRequest {
+string fromAccId = 1;
+string toAccId = 2;
+double value = 3;
+bool isSentByPrimary = 4;
+string transactionId = 5;
+}
+message SetUpdateResponse {
+bool status = 1;
+}
+service SetUpdateService {
+rpc setUpdate(SetUpdateRequest) returns (SetUpdateResponse);
+}

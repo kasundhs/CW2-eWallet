@@ -35,8 +35,8 @@ public class SetBalanceServiceImpl extends SetBalanceServiceGrpc.SetBalanceServi
                 startDistributedTx(accountId, value);
                 updateSecondaryServers(accountId, value);
                 System.out.println("going to perform");
-                ((DistributedTxCoordinator) server.getTransaction()).perform();
-                transactionStatus = true;
+                transactionStatus = ((DistributedTxCoordinator) server.getBalanceTransaction()).perform();
+                System.out.println("Status : "+transactionStatus);
             } catch (Exception e) {
                 System.out.println("Error while updating the account balance" + e.getMessage());
                 e.printStackTrace();
@@ -47,9 +47,9 @@ public class SetBalanceServiceImpl extends SetBalanceServiceGrpc.SetBalanceServi
                 System.out.println("Updating account balance on secondary, on Primary's command");
                 startDistributedTx(accountId, value);
                 if (value >= 0.0d) {
-                    ((DistributedTxParticipant) server.getTransaction()).voteCommit();
+                    ((DistributedTxParticipant) server.getBalanceTransaction()).voteCommit();
                 } else {
-                    ((DistributedTxParticipant) server.getTransaction()).voteAbort();
+                    ((DistributedTxParticipant) server.getBalanceTransaction()).voteAbort();
                 }
             } else {
                 SetBalanceResponse response = callPrimary(accountId, value);
@@ -58,6 +58,7 @@ public class SetBalanceServiceImpl extends SetBalanceServiceGrpc.SetBalanceServi
                 }
             }
         }
+        System.out.println("setBalance");
         SetBalanceResponse response = SetBalanceResponse
                 .newBuilder()
                 .setStatus(transactionStatus)
@@ -87,8 +88,8 @@ public class SetBalanceServiceImpl extends SetBalanceServiceGrpc.SetBalanceServi
                 .setValue(value)
                 .setIsSentByPrimary(isSentByPrimary)
                 .build();
-        SetBalanceResponse response =
-                clientStub.setBalance(request);
+        SetBalanceResponse response = clientStub.setBalance(request);
+        System.out.println("callServer");
         return response;
     }
     private SetBalanceResponse callPrimary(String accountId, double value) {
@@ -109,8 +110,9 @@ public class SetBalanceServiceImpl extends SetBalanceServiceGrpc.SetBalanceServi
     }
     private void startDistributedTx(String accountId, double value) {
         try {
-            server.getTransaction().start(accountId, String.valueOf(UUID.randomUUID()));
+            server.getBalanceTransaction().start(accountId, String.valueOf(UUID.randomUUID()));
             tempDataHolder = new Pair<>(accountId, value);
+            System.out.println("startDistributedTx");
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -123,6 +125,7 @@ public class SetBalanceServiceImpl extends SetBalanceServiceGrpc.SetBalanceServi
 
     @Override
     public void onGlobalCommit() {
+        System.out.println("onGlobalCommit from setBalance");
         updateBalance();
     }
 }

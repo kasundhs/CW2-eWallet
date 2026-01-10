@@ -21,9 +21,11 @@ public class BankServer {
     private byte[] leaderData;
     private Map<String, Double> accounts = new HashMap();
 
-    DistributedTx transaction;
+    DistributedTx balanceTransaction;
+    DistributedTx transferTransaction;
     SetBalanceServiceImpl setBalanceService;
     CheckBalanceServiceImpl checkBalanceService;
+    SetUpdateServiceImpl setUpdateService;
 
     public static void main (String[] args) throws Exception{
         DistributedLock.setZooKeeperURL("localhost:2181");
@@ -43,13 +45,17 @@ public class BankServer {
         nameServiceClient = new NameServiceClient(NAME_SERVICE_ADDRESS);
         setBalanceService = new SetBalanceServiceImpl(this);
         checkBalanceService = new CheckBalanceServiceImpl(this);
-        transaction = new DistributedTxParticipant(setBalanceService);
+        setUpdateService = new SetUpdateServiceImpl(this);
+        balanceTransaction = new DistributedTxParticipant(setBalanceService);
+        transferTransaction = new DistributedTxParticipant(setUpdateService);
     }
 
-    public DistributedTx getTransaction() {
-        return transaction;
+    public DistributedTx getBalanceTransaction() {
+        return balanceTransaction;
     }
-
+    public DistributedTx getTransferTransaction(){
+        return transferTransaction;
+    }
 
     public static String buildServerData(String IP, int port) {
         StringBuilder builder = new StringBuilder();
@@ -97,6 +103,7 @@ public class BankServer {
                 .forPort(serverPort)
                 .addService(checkBalanceService)
                 .addService(setBalanceService)
+                .addService(setUpdateService)
                 .build();
         server.start();
         System.out.println("BankServer Started and ready to accept requests on port " + serverPort);
@@ -134,7 +141,8 @@ public class BankServer {
     private void beTheLeader() {
         System.out.println("I got the leader lock. Now acting as primary");
         isLeader.set(true);
-        transaction = new DistributedTxCoordinator(setBalanceService);
+        balanceTransaction = new DistributedTxCoordinator(setBalanceService);
+        transferTransaction = new DistributedTxCoordinator(setUpdateService);
     }
 
 }

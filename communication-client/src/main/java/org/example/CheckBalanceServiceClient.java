@@ -11,7 +11,8 @@ public class CheckBalanceServiceClient {
     public static final String NAME_SERVICE_ADDRESS = "http://localhost:2379";
     private ManagedChannel channel = null;
     private CheckBalanceServiceGrpc.CheckBalanceServiceBlockingStub clientStub = null;
-    SetBalanceServiceGrpc.SetBalanceServiceBlockingStub setBalanceClient = null;
+    private SetBalanceServiceGrpc.SetBalanceServiceBlockingStub setBalanceClient = null;
+    private SetUpdateServiceGrpc.SetUpdateServiceBlockingStub setUpdateClient = null;
     private String host = null;
     int port = -1;
     private String mode = null;
@@ -44,6 +45,7 @@ public class CheckBalanceServiceClient {
                 .build();
         clientStub = CheckBalanceServiceGrpc.newBlockingStub(channel);
         setBalanceClient = SetBalanceServiceGrpc.newBlockingStub(channel);
+        setUpdateClient = SetUpdateServiceGrpc.newBlockingStub(channel);
         channel.getState(true);
     }
     private void closeConnection() {
@@ -54,36 +56,80 @@ public class CheckBalanceServiceClient {
             if (mode.equals("c")) {
 
                 Scanner userInput = new Scanner(System.in);
-                System.out.println("\nEnter Account ID to check the balance :");
+                System.out.println("\n1. Enter Account ID to check the balance \n2. Enter details for Fund transfer\n");
 
-                String accountId = userInput.nextLine().trim();
-                System.out.println("Requesting server to check the account balance for " + accountId.toString());
-                CheckBalanceRequest request = CheckBalanceRequest
-                        .newBuilder()
-                        .setAccountId(accountId)
-                        .build();
-
-                CheckBalanceResponse response = clientStub.checkBalance(request);
-                System.out.printf("My balance is " + response.getBalance() + " LKR");
+                String inputList = userInput.nextLine().trim();
+                String[] inputs =null;
+                if (inputList.isEmpty()) {
+                    System.out.println("Usage: to check Balance enter account Id or to transfers enter Sender id, Beneficiary id, Amount\n");
+                    continue;
+                } else {
+                    inputs = inputList.split("\\s*,\\s*");
+                }
+                if(inputs.length == 1){
+                    String accountId = inputs[0];
+                    System.out.println("Requesting server to check the account balance for " + accountId);
+                    CheckBalanceRequest request = CheckBalanceRequest
+                            .newBuilder()
+                            .setAccountId(accountId)
+                            .build();
+                    CheckBalanceResponse response = clientStub.checkBalance(request);
+                    System.out.println("My balance is " + response.getBalance() + " LKR\n");
+                }
+                else if (inputs.length == 3){
+                    String fromAccId = inputs[0];
+                    String toAccId = inputs[1];
+                    double amount = Double.parseDouble(inputs[2]);
+                    SetUpdateRequest request = SetUpdateRequest
+                            .newBuilder()
+                            .setFromAccId(fromAccId)
+                            .setToAccId(toAccId)
+                            .setValue(amount)
+                            .build();
+                    SetUpdateResponse response = setUpdateClient.setUpdate(request);
+                    System.out.println("Fund Transfer From "+fromAccId+" To "+toAccId+" is "+response.getStatus());
+                }
 
                 Thread.sleep(1000);
             } else {
                 Scanner userInput = new Scanner(System.in);
-                System.out.println("\nEnter Account ID,amount to set the balance :");
+                System.out.println("\n1. Enter Account ID,amount to set the balance :\n2. Enter Account ID to Check Balance\n");
 
-                String setBalanceInput = userInput.nextLine().trim();
-                String accountId = setBalanceInput.split(",")[0];
-                double amount = Double.parseDouble(setBalanceInput.split(",")[1]);
-                System.out.println("Requesting server to set the account balance for " + accountId.toString() + " as " + amount + " LKR");
-                SetBalanceRequest request = SetBalanceRequest
-                        .newBuilder()
-                        .setAccountId(accountId)
-                        .setValue(amount)
-                        .build();
+                String inputList = userInput.nextLine().trim();
+                String[] inputs =null;
 
-                SetBalanceResponse response = setBalanceClient.setBalance(request);
-                System.out.printf("Set balance request status is " + response.getStatus());
+                if (inputList.isEmpty()) {
+                    System.out.println("Usage: Enter Account ID and amount to Create Account or Enter Account ID to check Balance\n");
+                    continue;
+                } else {
+                    inputs = inputList.split("\\s*,\\s*");
+                }
+                if(inputs.length == 1){
+                    String accountId = inputs[0];
+                    System.out.println("Requesting server to check the account balance for " + accountId);
+                    CheckBalanceRequest request = CheckBalanceRequest
+                            .newBuilder()
+                            .setAccountId(accountId)
+                            .build();
+                    CheckBalanceResponse response = clientStub.checkBalance(request);
+                    System.out.printf("My balance is " + response.getBalance() + " LKR. Requested by Clark\n");
+                }
+                else if(inputs.length == 2) {
+                    String accountId = inputs[0];
+                    double amount = Double.parseDouble(inputs[1]);
+                    System.out.println("Requesting server to set the account balance for " + accountId + " as " + amount + " LKR");
+                    SetBalanceRequest request = SetBalanceRequest
+                            .newBuilder()
+                            .setAccountId(accountId)
+                            .setValue(amount)
+                            .build();
 
+                    SetBalanceResponse response = setBalanceClient.setBalance(request);
+                    System.out.printf("Set balance request status is " + response.getStatus());
+                }
+                else{
+                    System.out.println("Length is "+inputList.length());
+                }
                 Thread.sleep(1000);
             }
         }

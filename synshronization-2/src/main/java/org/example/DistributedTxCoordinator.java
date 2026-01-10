@@ -61,7 +61,7 @@ public class DistributedTxCoordinator extends DistributedTx{
     }
     private void reset() throws InterruptedException, KeeperException {
         client.forceDelete(currentTransaction);
-        currentTransaction =    null;
+        currentTransaction = null;
     }
 
 }
