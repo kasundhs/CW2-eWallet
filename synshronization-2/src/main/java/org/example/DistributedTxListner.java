@@ -1,4 +1,6 @@
 package org.example;
 
-public class DistributedTxListner {
+public interface DistributedTxListner {
+    void onGlobalCommit();
+    void onGlobalAbort();
 }
