@@ -23,13 +23,13 @@ public class CheckBalanceServiceClient {
         }
 
         CheckBalanceServiceClient client = new CheckBalanceServiceClient(args[0]);
-        client.initializeConnection();
+        // client.initializeConnection();
         client.processUserRequests();
-        client.closeConnection();
+        //client.closeConnection();
     }
     public CheckBalanceServiceClient (String mode) throws InterruptedException, IOException {
         this.mode = mode;
-        fetchServerDetails();
+        // fetchServerDetails();
     }
     private void fetchServerDetails() throws IOException, InterruptedException {
         NameServiceClient client = new NameServiceClient(NAME_SERVICE_ADDRESS);
@@ -57,8 +57,8 @@ public class CheckBalanceServiceClient {
 
                 Scanner userInput = new Scanner(System.in);
                 System.out.println("\n1. Enter Account ID to check the balance \n2. Enter details for Fund transfer\n");
-
                 String inputList = userInput.nextLine().trim();
+                ensureConnection();
                 String[] inputs =null;
                 if (inputList.isEmpty()) {
                     System.out.println("Usage: to check Balance enter account Id or to transfers enter Sender id, Beneficiary id, Amount\n");
@@ -89,15 +89,14 @@ public class CheckBalanceServiceClient {
                     SetUpdateResponse response = setUpdateClient.setUpdate(request);
                     System.out.println("Fund Transfer From "+fromAccId+" To "+toAccId+" is "+response.getStatus());
                 }
-
+                closeConnection();
                 Thread.sleep(1000);
             } else {
                 Scanner userInput = new Scanner(System.in);
                 System.out.println("\n1. Enter Account ID,amount to set the balance :\n2. Enter Account ID to Check Balance\n");
-
                 String inputList = userInput.nextLine().trim();
+                ensureConnection();
                 String[] inputs =null;
-
                 if (inputList.isEmpty()) {
                     System.out.println("Usage: Enter Account ID and amount to Create Account or Enter Account ID to check Balance\n");
                     continue;
@@ -130,8 +129,18 @@ public class CheckBalanceServiceClient {
                 else{
                     System.out.println("Length is "+inputList.length());
                 }
+                closeConnection();
                 Thread.sleep(1000);
             }
+        }
+    }
+
+    private void ensureConnection() throws IOException, InterruptedException {
+        if (channel == null || channel.isShutdown() || channel.isTerminated()
+                || channel.getState(true) != ConnectivityState.READY) {
+            System.out.println("Connecting to server...");
+            fetchServerDetails();
+            initializeConnection();
         }
     }
 }

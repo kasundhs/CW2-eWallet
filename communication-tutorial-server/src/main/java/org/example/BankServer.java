@@ -107,14 +107,6 @@ public class BankServer {
                 .build();
         server.start();
         System.out.println("BankServer Started and ready to accept requests on port " + serverPort);
-
-        nameServiceClient.registerService(
-                "CheckBalanceService",
-                "127.0.0.1",
-                serverPort,
-                "tcp"
-        );
-
         tryToBeLeader();
         server.awaitTermination();
     }
@@ -138,11 +130,20 @@ public class BankServer {
         }
         return result;
     }
-    private void beTheLeader() {
+    private void beTheLeader() throws IOException, InterruptedException, KeeperException {
         System.out.println("I got the leader lock. Now acting as primary");
         isLeader.set(true);
+        registerService();
         balanceTransaction = new DistributedTxCoordinator(setBalanceService);
         transferTransaction = new DistributedTxCoordinator(setUpdateService);
+    }
+    private void registerService() throws IOException, InterruptedException, KeeperException {
+        nameServiceClient.registerService(
+                "CheckBalanceService",
+                "127.0.0.1",
+                serverPort,
+                "tcp"
+        );
     }
 
 }
