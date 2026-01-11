@@ -19,7 +19,7 @@ public class DummyProcess {
         System.out.println("Contesting to acquire lock "
                 + lockName);
         try {
-            DistributedLock lock = new DistributedLock(lockName,"");
+            DistributedLock lock = new DistributedLock(lockName,"",1);
             lock.acquireLock();
             System.out.println("I Got the lock at " + getCurrentTimeStamp());
             accessSharedResource();

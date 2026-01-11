@@ -31,11 +31,14 @@ public class CheckBalanceServiceClient {
         this.mode = mode;
         // fetchServerDetails();
     }
-    private void fetchServerDetails() throws IOException, InterruptedException {
+    private void fetchServerDetails(String accountId) throws IOException, InterruptedException {
+        int partitionId = getPartitionForAccount(accountId);
+        String serviceName = "CheckBalanceService_partition_" + partitionId;
         NameServiceClient client = new NameServiceClient(NAME_SERVICE_ADDRESS);
-        NameServiceClient.ServiceDetails serviceDetails = client.findService("CheckBalanceService");
+        NameServiceClient.ServiceDetails serviceDetails = client.findService(serviceName);
         host = serviceDetails.getIPAddress();
         port = serviceDetails.getPort();
+        System.out.println("Connecting to partition " + partitionId + " server at " + host + ":" + port);
     }
     private void initializeConnection () {
         System.out.println("Initializing Connecting to server at " + host + ":" +
@@ -58,7 +61,6 @@ public class CheckBalanceServiceClient {
                 Scanner userInput = new Scanner(System.in);
                 System.out.println("\n1. Enter Account ID to check the balance \n2. Enter details for Fund transfer\n");
                 String inputList = userInput.nextLine().trim();
-                ensureConnection();
                 String[] inputs =null;
                 if (inputList.isEmpty()) {
                     System.out.println("Usage: to check Balance enter account Id or to transfers enter Sender id, Beneficiary id, Amount\n");
@@ -68,6 +70,7 @@ public class CheckBalanceServiceClient {
                 }
                 if(inputs.length == 1){
                     String accountId = inputs[0];
+                    ensureConnection(accountId);
                     System.out.println("Requesting server to check the account balance for " + accountId);
                     CheckBalanceRequest request = CheckBalanceRequest
                             .newBuilder()
@@ -80,6 +83,7 @@ public class CheckBalanceServiceClient {
                     String fromAccId = inputs[0];
                     String toAccId = inputs[1];
                     double amount = Double.parseDouble(inputs[2]);
+                    ensureConnection(fromAccId);
                     SetUpdateRequest request = SetUpdateRequest
                             .newBuilder()
                             .setFromAccId(fromAccId)
@@ -95,7 +99,6 @@ public class CheckBalanceServiceClient {
                 Scanner userInput = new Scanner(System.in);
                 System.out.println("\n1. Enter Account ID,amount to set the balance :\n2. Enter Account ID to Check Balance\n");
                 String inputList = userInput.nextLine().trim();
-                ensureConnection();
                 String[] inputs =null;
                 if (inputList.isEmpty()) {
                     System.out.println("Usage: Enter Account ID and amount to Create Account or Enter Account ID to check Balance\n");
@@ -105,6 +108,7 @@ public class CheckBalanceServiceClient {
                 }
                 if(inputs.length == 1){
                     String accountId = inputs[0];
+                    ensureConnection(accountId);
                     System.out.println("Requesting server to check the account balance for " + accountId);
                     CheckBalanceRequest request = CheckBalanceRequest
                             .newBuilder()
@@ -116,6 +120,7 @@ public class CheckBalanceServiceClient {
                 else if(inputs.length == 2) {
                     String accountId = inputs[0];
                     double amount = Double.parseDouble(inputs[1]);
+                    ensureConnection(accountId);
                     System.out.println("Requesting server to set the account balance for " + accountId + " as " + amount + " LKR");
                     SetBalanceRequest request = SetBalanceRequest
                             .newBuilder()
@@ -135,12 +140,16 @@ public class CheckBalanceServiceClient {
         }
     }
 
-    private void ensureConnection() throws IOException, InterruptedException {
+    private void ensureConnection(String accountdId) throws IOException, InterruptedException {
         if (channel == null || channel.isShutdown() || channel.isTerminated()
                 || channel.getState(true) != ConnectivityState.READY) {
             System.out.println("Connecting to server...");
-            fetchServerDetails();
+            fetchServerDetails(accountdId);
             initializeConnection();
         }
+    }
+    private int getPartitionForAccount(String accountId) {
+        int accNumber = Integer.parseInt(accountId);
+        return accNumber % 2; // 0 for even, 1 for odd
     }
 }

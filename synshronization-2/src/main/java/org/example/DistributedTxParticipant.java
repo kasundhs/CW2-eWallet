@@ -6,13 +6,16 @@ import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
 
 import java.nio.charset.StandardCharsets;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class DistributedTxParticipant extends DistributedTx implements Watcher {
     private static final String PARTICIANT_PREFIX = "/txp_";
     private String transactionRoot;
+    private final AtomicBoolean snapshotReady;
 
-    public DistributedTxParticipant(DistributedTxListner listener){
+    public DistributedTxParticipant(DistributedTxListner listener, AtomicBoolean snapshotReady){
         super(listener);
+        this.snapshotReady = snapshotReady;
     }
 
     @Override
@@ -65,7 +68,11 @@ public class DistributedTxParticipant extends DistributedTx implements Watcher {
             } else {
                 System.out.println("Unknown data change in root : " + datastring);
             }
-        } catch (Exception e) {
+        }
+        catch (KeeperException.NoNodeException e) {
+            System.out.println("Transaction root does not exist yet: " + transactionRoot);
+        }
+        catch (Exception e) {
             e.printStackTrace();
         }
     }
@@ -73,6 +80,8 @@ public class DistributedTxParticipant extends DistributedTx implements Watcher {
     @Override
     public void process(WatchedEvent event) {
         if (transactionRoot == null) return;
+        if (!snapshotReady.get()) return;
+
         String path = event.getPath();
         Event.EventType type = event.getType();
         if (Event.EventType.NodeDataChanged == type && transactionRoot.equals(path)) {

@@ -25,19 +25,18 @@ public class DistributedLock implements Watcher {
     public static void setZooKeeperURL(String url){
         zooKeeperUrl = url;
     }
-    public DistributedLock(String lockName, String data) throws IOException, KeeperException, InterruptedException {
+    public DistributedLock(String lockName, String data, int partitionId) throws IOException, KeeperException, InterruptedException {
         myDataBytes = data.getBytes(StandardCharsets.UTF_8);
-        this.lockPath = "/" + lockName;
+        this.lockPath = "/" + lockName + "_partition_" + partitionId; // Partition-specific root node
         client = new ZooKeeperClient(zooKeeperUrl, 5000, this);
         startFlag.await();
-        if (client.CheckExists(lockPath) == false) {
+        if (!client.CheckExists(lockPath)) {
             createRootNode();
         }
         createChildNode();
     }
 
-    private void createChildNode() throws
-            InterruptedException, UnsupportedEncodingException, KeeperException {
+    private void createChildNode() throws InterruptedException, UnsupportedEncodingException, KeeperException {
         childPath = client.createNode(lockPath + lockProcessPath,
                 false, CreateMode.EPHEMERAL_SEQUENTIAL, myDataBytes);
         System.out.println("Child node created at " + childPath);

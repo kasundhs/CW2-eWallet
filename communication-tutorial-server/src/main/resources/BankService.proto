@@ -36,3 +36,12 @@ bool status = 1;
 service SetUpdateService {
 rpc setUpdate(SetUpdateRequest) returns (SetUpdateResponse);
 }
+
+message GetAllAccountsRequest {}
+
+message GetAllAccountsResponse {
+  map<string, double> accounts = 1;
+}
+service AccountSyncService {
+  rpc GetAllAccounts (GetAllAccountsRequest) returns (GetAllAccountsResponse);
+}
