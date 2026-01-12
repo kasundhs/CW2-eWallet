@@ -45,3 +45,16 @@ message GetAllAccountsResponse {
 service AccountSyncService {
   rpc GetAllAccounts (GetAllAccountsRequest) returns (GetAllAccountsResponse);
 }
+
+message SetCrossPartTransRequest{
+string accId = 1;
+double amount = 2;
+bool isDebit =3;
+bool isSentByPrimary = 5;
+}
+message SetCrossPartTransResponse{
+bool status = 1;
+}
+service SetCrossPartTransService{
+rpc setTransaction(SetCrossPartTransRequest) returns (SetCrossPartTransResponse);
+}

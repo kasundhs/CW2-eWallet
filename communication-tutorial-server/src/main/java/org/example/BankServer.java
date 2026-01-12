@@ -31,10 +31,12 @@ public class BankServer {
 
     DistributedTx balanceTransaction;
     DistributedTx transferTransaction;
+    DistributedTx crossTransferTransact;
     SetBalanceServiceImpl setBalanceService;
     CheckBalanceServiceImpl checkBalanceService;
     SetUpdateServiceImpl setUpdateService;
     AccountSyncServiceImpl accountSyncService;
+    SetCrossPartTransactionImpl setCrossPartTransaction;
 
     public static void main (String[] args) throws Exception{
         DistributedLock.setZooKeeperURL("localhost:2181");
@@ -58,9 +60,11 @@ public class BankServer {
         setBalanceService = new SetBalanceServiceImpl(this);
         checkBalanceService = new CheckBalanceServiceImpl(this);
         setUpdateService = new SetUpdateServiceImpl(this);
+        accountSyncService = new AccountSyncServiceImpl(this);
+        setCrossPartTransaction = new SetCrossPartTransactionImpl(this);
         balanceTransaction = new DistributedTxParticipant(setBalanceService, snapshotReady);
         transferTransaction = new DistributedTxParticipant(setUpdateService, snapshotReady);
-        accountSyncService = new AccountSyncServiceImpl(this);
+        crossTransferTransact = new DistributedTxParticipant(setCrossPartTransaction,snapshotReady);
     }
 
     public DistributedTx getBalanceTransaction() {
@@ -68,6 +72,13 @@ public class BankServer {
     }
     public DistributedTx getTransferTransaction(){
         return transferTransaction;
+    }
+    public DistributedTx getCrossTransferTransact(){
+        return crossTransferTransact;
+    }
+
+    public String getPartitionId() {
+        return String.valueOf(partitionId);
     }
 
     public static String buildServerData(String IP, int port) {
@@ -124,6 +135,7 @@ public class BankServer {
                 .addService(setBalanceService)
                 .addService(setUpdateService)
                 .addService(accountSyncService)
+                .addService(setCrossPartTransaction)
                 .build();
         server.start();
         System.out.println("BankServer Started and ready to accept requests on port " + serverPort);
@@ -157,6 +169,7 @@ public class BankServer {
         registerService();
         balanceTransaction = new DistributedTxCoordinator(setBalanceService);
         transferTransaction = new DistributedTxCoordinator(setUpdateService);
+        crossTransferTransact = new DistributedTxCoordinator(setCrossPartTransaction);
     }
     private void registerService() throws IOException, InterruptedException, KeeperException {
         String serviceName = "CheckBalanceService_partition_" + partitionId;

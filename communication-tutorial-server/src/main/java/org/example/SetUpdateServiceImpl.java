@@ -75,7 +75,7 @@ public class SetUpdateServiceImpl extends SetUpdateServiceGrpc.SetUpdateServiceI
 
     private void startDistributedTx(String fromAcc, String toAcc, double value) throws IOException {
         String txId = UUID.randomUUID().toString();
-        server.getTransferTransaction().start(fromAcc + "->" + toAcc, txId);
+        server.getTransferTransaction().start(fromAcc + "->" + toAcc, server.getPartitionId());
         fromUpdate = new Pair<>(fromAcc, -value);
         toUpdate = new Pair<>(toAcc, value);
     }

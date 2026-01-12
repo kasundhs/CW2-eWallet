@@ -22,6 +22,10 @@ public class DistributedTxCoordinator extends DistributedTx{
             e.printStackTrace();
         }
     }
+    public int getChildCount() throws InterruptedException, KeeperException {
+        List<String> childNodePaths = client.getChildrenNodePaths(currentTransaction);
+        return childNodePaths.size();
+    }
 
     public boolean perform() throws KeeperException,InterruptedException{
         List<String> childNodePaths = client.getChildrenNodePaths(currentTransaction);

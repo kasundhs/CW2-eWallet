@@ -110,7 +110,7 @@ public class SetBalanceServiceImpl extends SetBalanceServiceGrpc.SetBalanceServi
     }
     private void startDistributedTx(String accountId, double value) {
         try {
-            server.getBalanceTransaction().start(accountId, String.valueOf(UUID.randomUUID()));
+            server.getBalanceTransaction().start(accountId, server.getPartitionId());
             tempDataHolder = new Pair<>(accountId, value);
             System.out.println("startDistributedTx");
         } catch (IOException e) {
