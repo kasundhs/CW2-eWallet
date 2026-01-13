@@ -9,7 +9,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class DistributedTxParticipant extends DistributedTx implements Watcher {
-    private static final String PARTICIANT_PREFIX = "/txp_";
+    private static final String PARTICIPANT_PREFIX = "/txp_";
     private String transactionRoot;
     private final AtomicBoolean snapshotReady;
 
@@ -20,14 +20,33 @@ public class DistributedTxParticipant extends DistributedTx implements Watcher {
 
     @Override
     void onStartTransaction(String transactionId, String participantId) {
-        try{
-            transactionRoot = "/"+ transactionId;
-            // System.out.println("DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD");
-            currentTransaction = transactionRoot + PARTICIANT_PREFIX + participantId;
-            client.createNode(currentTransaction,true, CreateMode.EPHEMERAL,"".getBytes(StandardCharsets.UTF_8));
+//        try{
+//            transactionRoot = "/"+ transactionId;
+//            // System.out.println("DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD");
+//            currentTransaction = transactionRoot + PARTICIPANT_PREFIX + participantId;
+//            client.createNode(currentTransaction,true, CreateMode.EPHEMERAL,"".getBytes(StandardCharsets.UTF_8));
+//            client.addWatch(transactionRoot);
+//        }
+//        catch (Exception e){
+//            e.printStackTrace();
+//        }
+
+        try {
+            transactionRoot = "/" + transactionId;  // Ensure root exists
+            if (!client.CheckExists(transactionRoot)) {
+                try {
+                    client.createNode(transactionRoot, false, CreateMode.PERSISTENT, "".getBytes(StandardCharsets.UTF_8)
+                    );
+                } catch (org.apache.zookeeper.KeeperException.NodeExistsException e) {
+                    // safe to ignore
+                }
+            }
+
+            currentTransaction = transactionRoot + PARTICIPANT_PREFIX + participantId;
+            client.createNode(currentTransaction, true, CreateMode.EPHEMERAL, "".getBytes(StandardCharsets.UTF_8)
+            );
             client.addWatch(transactionRoot);
-        }
-        catch (Exception e){
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }
