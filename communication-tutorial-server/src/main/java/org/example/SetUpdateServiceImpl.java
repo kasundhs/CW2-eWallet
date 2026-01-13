@@ -37,9 +37,22 @@ public class SetUpdateServiceImpl extends SetUpdateServiceGrpc.SetUpdateServiceI
             try {
                 System.out.println("Leader handling transfer");
                 startDistributedTx(fromAcc, toAcc, value);
-                updateSecondaryServers(fromAcc, toAcc, value);
-                transactionStatus = ((DistributedTxCoordinator) server.getTransferTransaction()).perform();
-                System.out.println("Transaction Status : "+transactionStatus);
+                if(((DistributedTxCoordinator) server.getTransferTransaction()).getChildCount() != 0) {
+                    updateSecondaryServers(fromAcc, toAcc, value);
+                    transactionStatus = ((DistributedTxCoordinator) server.getTransferTransaction()).perform();
+                    System.out.println("Transaction Status : " + transactionStatus);
+                }
+                else {
+                    double fromBalance = server.getAccountBalance(fromAcc);
+                    if (fromBalance >= value) {
+                        updateSecondaryServers(fromAcc, toAcc, value);
+                        transactionStatus = ((DistributedTxCoordinator) server.getTransferTransaction()).perform();
+                        System.out.println("Transaction Status : " + transactionStatus);
+                    }
+                    else{
+                        transactionStatus = false;
+                    }
+                }
             } catch (Exception e) {
                 e.printStackTrace();
             }

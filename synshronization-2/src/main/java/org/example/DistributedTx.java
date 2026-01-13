@@ -1,5 +1,6 @@
 package org.example;
 
+import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
 
@@ -26,6 +27,13 @@ public abstract class DistributedTx implements Watcher {
 
     public void start (String transactionId, String participantId) throws IOException {
         client = new ZooKeeperClient(zookeeperUrl,5000,this);
+        try {
+            // ensure root exists exactly once
+            client.ensurePersistentNode("/CrossPartition");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        // System.out.println("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
         onStartTransaction(transactionId,participantId);
     }
     abstract void onStartTransaction(String transactionId, String participantId);

@@ -22,6 +22,7 @@ public class DistributedTxParticipant extends DistributedTx implements Watcher {
     void onStartTransaction(String transactionId, String participantId) {
         try{
             transactionRoot = "/"+ transactionId;
+            // System.out.println("DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD");
             currentTransaction = transactionRoot + PARTICIANT_PREFIX + participantId;
             client.createNode(currentTransaction,true, CreateMode.EPHEMERAL,"".getBytes(StandardCharsets.UTF_8));
             client.addWatch(transactionRoot);

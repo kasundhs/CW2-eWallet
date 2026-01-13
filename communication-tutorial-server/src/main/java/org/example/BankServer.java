@@ -36,7 +36,7 @@ public class BankServer {
     CheckBalanceServiceImpl checkBalanceService;
     SetUpdateServiceImpl setUpdateService;
     AccountSyncServiceImpl accountSyncService;
-    SetCrossPartTransactionImpl setCrossPartTransaction;
+    SetCrossPartTransactionServiceImpl setCrossPartTransaction;
 
     public static void main (String[] args) throws Exception{
         DistributedLock.setZooKeeperURL("localhost:2181");
@@ -61,7 +61,7 @@ public class BankServer {
         checkBalanceService = new CheckBalanceServiceImpl(this);
         setUpdateService = new SetUpdateServiceImpl(this);
         accountSyncService = new AccountSyncServiceImpl(this);
-        setCrossPartTransaction = new SetCrossPartTransactionImpl(this);
+        setCrossPartTransaction = new SetCrossPartTransactionServiceImpl(this);
         balanceTransaction = new DistributedTxParticipant(setBalanceService, snapshotReady);
         transferTransaction = new DistributedTxParticipant(setUpdateService, snapshotReady);
         crossTransferTransact = new DistributedTxParticipant(setCrossPartTransaction,snapshotReady);

@@ -15,8 +15,10 @@ public class DistributedTxCoordinator extends DistributedTx{
     @Override
     void onStartTransaction(String transactionId, String participantId) {
         try{
+//            System.out.println("CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC");
             currentTransaction = "/" + transactionId;
             client.createNode(currentTransaction,true, CreateMode.PERSISTENT,"".getBytes(StandardCharsets.UTF_8));
+//            System.out.println("EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE");
         }
         catch (Exception e){
             e.printStackTrace();
@@ -45,6 +47,7 @@ public class DistributedTxCoordinator extends DistributedTx{
         }
         System.out.println("All nodes are ready to commit. Sending GLOBAL_COMMIT");
         sendGlobalCommit();
+        Thread.sleep(50);
         reset();
         return result;
     }

@@ -50,7 +50,8 @@ message SetCrossPartTransRequest{
 string accId = 1;
 double amount = 2;
 bool isDebit =3;
-bool isSentByPrimary = 5;
+bool isSentByPrimary = 4;
+string txId = 5;
 }
 message SetCrossPartTransResponse{
 bool status = 1;

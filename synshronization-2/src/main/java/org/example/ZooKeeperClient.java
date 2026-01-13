@@ -37,7 +37,9 @@ public class ZooKeeperClient {
     }
     public String createNode(String path, boolean shouldWatch, CreateMode mode, byte[] data)
             throws KeeperException, InterruptedException, UnsupportedEncodingException {
+//        System.out.println("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF");
         String createdPath = zooKeeper.create(path, data, ZooDefs.Ids.OPEN_ACL_UNSAFE, mode);
+//        System.out.println("GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG");
         return createdPath;
     }
     public byte[] getData(String path, boolean shouldWatch) throws KeeperException, InterruptedException {
@@ -48,6 +50,20 @@ public class ZooKeeperClient {
     }
     public void forceDelete(String path) throws KeeperException, InterruptedException{
         ZKUtil.deleteRecursive(zooKeeper,path);
+    }
+    public void ensurePersistentNode(String path)
+            throws KeeperException, InterruptedException {
+        if (zooKeeper.exists(path, false) == null) {
+            try {
+                zooKeeper.create(
+                        path,
+                        new byte[0],
+                        ZooDefs.Ids.OPEN_ACL_UNSAFE,
+                        CreateMode.PERSISTENT
+                );
+            } catch (KeeperException.NodeExistsException ignored) {
+            }
+        }
     }
 
 }
