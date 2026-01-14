@@ -32,20 +32,24 @@ public class SetUpdateServiceImpl extends SetUpdateServiceGrpc.SetUpdateServiceI
         String fromAcc = request.getFromAccId();
         String toAcc = request.getToAccId();
         double value = request.getValue();
+        String txId = request.getTxId();
 
         if (server.isLeader()) {
             try {
                 System.out.println("Leader handling transfer");
-                startDistributedTx(fromAcc, toAcc, value);
+                if (txId == null || txId.isEmpty()) {
+                    txId = "CrossPartition-" + fromAcc + "-" + UUID.randomUUID();
+                }
+                startDistributedTx(fromAcc, toAcc, value, txId);
                 if(((DistributedTxCoordinator) server.getTransferTransaction()).getChildCount() != 0) {
-                    updateSecondaryServers(fromAcc, toAcc, value);
+                    updateSecondaryServers(fromAcc, toAcc, value,txId);
                     transactionStatus = ((DistributedTxCoordinator) server.getTransferTransaction()).perform();
                     System.out.println("Transaction Status : " + transactionStatus);
                 }
                 else {
                     double fromBalance = server.getAccountBalance(fromAcc);
                     if (fromBalance >= value) {
-                        updateSecondaryServers(fromAcc, toAcc, value);
+                        updateSecondaryServers(fromAcc, toAcc, value,txId);
                         transactionStatus = ((DistributedTxCoordinator) server.getTransferTransaction()).perform();
                         System.out.println("Transaction Status : " + transactionStatus);
                     }
@@ -60,7 +64,7 @@ public class SetUpdateServiceImpl extends SetUpdateServiceGrpc.SetUpdateServiceI
             try{
                 if (request.getIsSentByPrimary()) {
                     System.out.println("Secondary received transfer request");
-                    startDistributedTx(fromAcc, toAcc, value);
+                    startDistributedTx(fromAcc, toAcc, value, txId);
 
                     double fromBalance = server.getAccountBalance(fromAcc);
                     if (fromBalance >= value) {
@@ -69,7 +73,7 @@ public class SetUpdateServiceImpl extends SetUpdateServiceGrpc.SetUpdateServiceI
                         ((DistributedTxParticipant) server.getTransferTransaction()).voteAbort();
                     }
                 } else {
-                    SetUpdateResponse response = callPrimary(fromAcc, toAcc, value);
+                    SetUpdateResponse response = callPrimary(fromAcc, toAcc, value, txId);
                     transactionStatus = response.getStatus();
                 }
             } catch (Exception e) {
@@ -86,8 +90,8 @@ public class SetUpdateServiceImpl extends SetUpdateServiceGrpc.SetUpdateServiceI
         responseObserver.onCompleted();
     }
 
-    private void startDistributedTx(String fromAcc, String toAcc, double value) throws IOException {
-        String txId = UUID.randomUUID().toString();
+    private void startDistributedTx(String fromAcc, String toAcc, double value, String txId) throws IOException {
+        // String txId = UUID.randomUUID().toString();
         server.getTransferTransaction().start(fromAcc + "->" + toAcc, server.getPartitionId());
         fromUpdate = new Pair<>(fromAcc, -value);
         toUpdate = new Pair<>(toAcc, value);
@@ -104,25 +108,25 @@ public class SetUpdateServiceImpl extends SetUpdateServiceGrpc.SetUpdateServiceI
         toUpdate = null;
     }
 
-    private void updateSecondaryServers(String fromAcc, String toAcc, double value)
+    private void updateSecondaryServers(String fromAcc, String toAcc, double value, String txId)
             throws KeeperException, InterruptedException {
 
         List<String[]> othersData = server.getOthersData();
         for (String[] data : othersData) {
             String IPAddress = data[0];
             int port = Integer.parseInt(data[1]);
-            callServer(fromAcc, toAcc, value, true, IPAddress, port);
+            callServer(fromAcc, toAcc, value, true, IPAddress, port, txId);
         }
     }
 
-    private SetUpdateResponse callPrimary(String fromAcc, String toAcc, double value) {
+    private SetUpdateResponse callPrimary(String fromAcc, String toAcc, double value, String txId) {
         String[] leader = server.getCurrentLeaderData();
-        return callServer(fromAcc, toAcc, value, false, leader[0], Integer.parseInt(leader[1]));
+        return callServer(fromAcc, toAcc, value, false, leader[0], Integer.parseInt(leader[1]), txId);
     }
 
     private SetUpdateResponse callServer(String fromAcc, String toAcc, double value,
                                          boolean isSentByPrimary,
-                                         String ip, int port) {
+                                         String ip, int port, String txId) {
         ManagedChannel channel = ManagedChannelBuilder
                 .forAddress(ip, port)
                 .usePlaintext()
@@ -136,6 +140,7 @@ public class SetUpdateServiceImpl extends SetUpdateServiceGrpc.SetUpdateServiceI
                 .setToAccId(toAcc)
                 .setValue(value)
                 .setIsSentByPrimary(isSentByPrimary)
+                .setTxId(txId)
                 .build();
         return stub.setUpdate(request);
     }

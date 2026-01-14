@@ -15,6 +15,7 @@ message SetBalanceRequest {
 string accountId = 1;
 double value = 2;
 bool isSentByPrimary = 3;
+string txId = 4;
 }
 message SetBalanceResponse {
 bool status = 1;
@@ -29,6 +30,7 @@ string toAccId = 2;
 double value = 3;
 bool isSentByPrimary = 4;
 string transactionId = 5;
+string txId = 6;
 }
 message SetUpdateResponse {
 bool status = 1;

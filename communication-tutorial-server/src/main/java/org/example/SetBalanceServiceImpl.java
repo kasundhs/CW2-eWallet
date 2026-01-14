@@ -26,12 +26,18 @@ public class SetBalanceServiceImpl extends SetBalanceServiceGrpc.SetBalanceServi
     @Override
     public void setBalance(ds.tutorial.communication.grpc.generated.SetBalanceRequest request,
                            io.grpc.stub.StreamObserver<ds.tutorial.communication.grpc.generated.SetBalanceResponse> responseObserver) {
+
         String accountId = request.getAccountId();
         double value = request.getValue();
+
+
         if (server.isLeader()){
                 // Act as primary
             try {
                 System.out.println("Updating account balance as Primary");
+                if (txId == null || txId.isEmpty()) {
+                    txId = "CrossPartition-" + accId + "-" + UUID.randomUUID();
+                }
                 startDistributedTx(accountId, value);
                 updateSecondaryServers(accountId, value);
                 System.out.println("going to perform");
