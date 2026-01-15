@@ -12,7 +12,8 @@ import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 
-public class SetUpdateServiceImpl extends SetUpdateServiceGrpc.SetUpdateServiceImplBase implements DistributedTxListner {
+public class SetUpdateServiceImpl extends SetUpdateServiceGrpc.SetUpdateServiceImplBase
+        implements DistributedTxListner {
     private BankServer server;
     private ManagedChannel channel;
     private SetUpdateServiceGrpc.SetUpdateServiceBlockingStub clientStub;
@@ -27,7 +28,7 @@ public class SetUpdateServiceImpl extends SetUpdateServiceGrpc.SetUpdateServiceI
 
     @Override
     public void setUpdate(SetUpdateRequest request,
-                          io.grpc.stub.StreamObserver<SetUpdateResponse> responseObserver) {
+            io.grpc.stub.StreamObserver<SetUpdateResponse> responseObserver) {
 
         String fromAcc = request.getFromAccId();
         String toAcc = request.getToAccId();
@@ -39,12 +40,12 @@ public class SetUpdateServiceImpl extends SetUpdateServiceGrpc.SetUpdateServiceI
                 startDistributedTx(fromAcc, toAcc, value);
                 updateSecondaryServers(fromAcc, toAcc, value);
                 transactionStatus = ((DistributedTxCoordinator) server.getTransferTransaction()).perform();
-                System.out.println("Transaction Status : "+transactionStatus);
+                System.out.println("Transaction Status : " + transactionStatus);
             } catch (Exception e) {
                 e.printStackTrace();
             }
         } else {
-            try{
+            try {
                 if (request.getIsSentByPrimary()) {
                     System.out.println("Secondary received transfer request");
                     startDistributedTx(fromAcc, toAcc, value);
@@ -108,15 +109,14 @@ public class SetUpdateServiceImpl extends SetUpdateServiceGrpc.SetUpdateServiceI
     }
 
     private SetUpdateResponse callServer(String fromAcc, String toAcc, double value,
-                                         boolean isSentByPrimary,
-                                         String ip, int port) {
+            boolean isSentByPrimary,
+            String ip, int port) {
         ManagedChannel channel = ManagedChannelBuilder
                 .forAddress(ip, port)
                 .usePlaintext()
                 .build();
 
-        SetUpdateServiceGrpc.SetUpdateServiceBlockingStub stub =
-                SetUpdateServiceGrpc.newBlockingStub(channel);
+        SetUpdateServiceGrpc.SetUpdateServiceBlockingStub stub = SetUpdateServiceGrpc.newBlockingStub(channel);
 
         SetUpdateRequest request = SetUpdateRequest.newBuilder()
                 .setFromAccId(fromAcc)
@@ -124,10 +124,11 @@ public class SetUpdateServiceImpl extends SetUpdateServiceGrpc.SetUpdateServiceI
                 .setValue(value)
                 .setIsSentByPrimary(isSentByPrimary)
                 .build();
-        return stub.setUpdate(request);
+
+        SetUpdateResponse response = stub.setUpdate(request);
+        channel.shutdown();
+        return response;
     }
-
-
 
     @Override
     public void onGlobalCommit() {

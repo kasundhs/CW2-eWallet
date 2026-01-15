@@ -198,16 +198,16 @@ public class CheckBalanceServiceClient {
         ensureConnection(fromAccId);
         SetUpdateResponse response = fundTransfers(fromAccId, toAccId, amount);
         if (response.getStatus()) {
-            System.out.println("✓ Same-partition transfer completed successfully");
-            System.out.println("  From: " + fromAccId + " → To: " + toAccId + " | Amount: " + amount + " LKR");
+            System.out.println("\nSame-partition transfer completed successfully");
+            System.out.println("\nFrom: " + fromAccId + " → To: " + toAccId + " | Amount: " + amount + " LKR");
         } else {
-            System.out.println("✗ Same-partition transfer failed");
+            System.out.println("\nSame-partition transfer failed");
         }
     }
 
     private void handleCrossPartitionTransfer(String fromAccId, String toAccId, double amount)
             throws IOException, InterruptedException {
-        System.out.println("=== Cross-Partition Transfer ===");
+        System.out.println("\n=== Cross-Partition Transfer ===");
         System.out.println("From Account: " + fromAccId + " (Partition " + getPartitionForAccount(fromAccId) + ")");
         System.out.println("To Account: " + toAccId + " (Partition " + getPartitionForAccount(toAccId) + ")");
         System.out.println("Amount: " + amount + " LKR");
@@ -217,11 +217,11 @@ public class CheckBalanceServiceClient {
         SetCrossPartTransResponse debitResponse = debitFromSourcePartition(fromAccId, amount);
 
         if (!debitResponse.getStatus()) {
-            System.out.println("✗ Transaction rejected by source partition");
+            System.out.println("\nTransaction rejected by source partition");
             return;
         }
 
-        System.out.println("✓ Debit successful from source partition");
+        System.out.println("\nDebit successful from source partition");
 
         // Step 2: Credit to destination partition
         closeConnection();
@@ -229,8 +229,8 @@ public class CheckBalanceServiceClient {
         SetCrossPartTransResponse creditResponse = creditToDestinationPartition(toAccId, amount);
 
         if (!creditResponse.getStatus()) {
-            System.out.println("✗ Credit rejected by destination partition");
-            System.out.println("⚠ Rolling back transaction...");
+            System.out.println("\nCredit rejected by destination partition");
+            System.out.println("\nRolling back transaction...");
 
             // Step 3: Rollback - credit back to source
             closeConnection();
@@ -238,28 +238,28 @@ public class CheckBalanceServiceClient {
             SetCrossPartTransResponse rollbackResponse = rollbackSourcePartition(fromAccId, amount);
 
             if (rollbackResponse.getStatus()) {
-                System.out.println("✓ Transaction rolled back successfully");
+                System.out.println("\nTransaction rolled back successfully");
             } else {
-                System.out.println("✗ CRITICAL: Rollback failed! Manual intervention required.");
+                System.out.println("\nCRITICAL: Rollback failed! Manual intervention required.");
             }
             return;
         }
 
-        System.out.println("✓ Cross-partition transfer completed successfully");
+        System.out.println("\nCross-partition transfer completed successfully");
     }
 
     private SetCrossPartTransResponse debitFromSourcePartition(String accountId, double amount) {
-        System.out.println("→ Debiting " + amount + " LKR from account " + accountId);
+        System.out.println("\nDebiting " + amount + " LKR from account " + accountId);
         return setTransaction(accountId, amount, true);
     }
 
     private SetCrossPartTransResponse creditToDestinationPartition(String accountId, double amount) {
-        System.out.println("→ Crediting " + amount + " LKR to account " + accountId);
+        System.out.println("\nCrediting " + amount + " LKR to account " + accountId);
         return setTransaction(accountId, amount, false);
     }
 
     private SetCrossPartTransResponse rollbackSourcePartition(String accountId, double amount) {
-        System.out.println("→ Reverting debit: crediting " + amount + " LKR back to account " + accountId);
+        System.out.println("\nReverting debit: crediting " + amount + " LKR back to account " + accountId);
         return setTransaction(accountId, amount, false);
     }
 }
