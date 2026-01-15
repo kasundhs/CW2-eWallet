@@ -29,10 +29,12 @@ public class BankServer {
 
     DistributedTx balanceTransaction;
     DistributedTx transferTransaction;
+    DistributedTx crossPartitionTransaction;
     SetBalanceServiceImpl setBalanceService;
     CheckBalanceServiceImpl checkBalanceService;
     SetUpdateServiceImpl setUpdateService;
     AccountSyncServiceImpl accountSyncService;
+    SetCrossPartTransServiceImpl setCrossPartTransService;
 
     public static void main(String[] args) throws Exception {
         DistributedLock.setZooKeeperURL("localhost:2181");
@@ -62,8 +64,10 @@ public class BankServer {
         checkBalanceService = new CheckBalanceServiceImpl(this);
         setUpdateService = new SetUpdateServiceImpl(this);
         accountSyncService = new AccountSyncServiceImpl(this);
+        setCrossPartTransService = new SetCrossPartTransServiceImpl(this);
         balanceTransaction = new DistributedTxParticipant(setBalanceService, snapshotReady);
         transferTransaction = new DistributedTxParticipant(setUpdateService, snapshotReady);
+        crossPartitionTransaction = new DistributedTxParticipant(setCrossPartTransService, snapshotReady);
     }
 
     public DistributedTx getBalanceTransaction() {
@@ -72,6 +76,10 @@ public class BankServer {
 
     public DistributedTx getTransferTransaction() {
         return transferTransaction;
+    }
+
+    public DistributedTx getCrossTransferTransact() {
+        return crossPartitionTransaction;
     }
 
     public static String buildServerData(String IP, int port) {
@@ -130,6 +138,7 @@ public class BankServer {
                 .addService(setBalanceService)
                 .addService(setUpdateService)
                 .addService(accountSyncService)
+                .addService(setCrossPartTransService)
                 .build();
         server.start();
         System.out.println("BankServer Started for Partition " + partitionId + " on port " + serverPort);
@@ -169,6 +178,7 @@ public class BankServer {
         registerService();
         balanceTransaction = new DistributedTxCoordinator(setBalanceService);
         transferTransaction = new DistributedTxCoordinator(setUpdateService);
+        crossPartitionTransaction = new DistributedTxCoordinator(setCrossPartTransService);
     }
 
     private void registerService() throws IOException, InterruptedException, KeeperException {
