@@ -35,3 +35,14 @@ bool status = 1;
 service SetUpdateService {
 rpc setUpdate(SetUpdateRequest) returns (SetUpdateResponse);
 }
+message SetCrossPartTransRequest{
+string accId = 1;
+double amount = 2;
+bool isDebit =3;
+}
+message SetCrossPartTransResponse{
+bool status = 1;
+}
+service SetCrossPartTransService{
+rpc setTransaction(SetCrossPartTransRequest) returns (SetCrossPartTransResponse);
+}

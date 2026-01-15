@@ -15,6 +15,7 @@ message SetBalanceRequest {
 string accountId = 1;
 double value = 2;
 bool isSentByPrimary = 3;
+string txId = 4;
 }
 message SetBalanceResponse {
 bool status = 1;
@@ -29,10 +30,34 @@ string toAccId = 2;
 double value = 3;
 bool isSentByPrimary = 4;
 string transactionId = 5;
+string txId = 6;
 }
 message SetUpdateResponse {
 bool status = 1;
 }
 service SetUpdateService {
 rpc setUpdate(SetUpdateRequest) returns (SetUpdateResponse);
+}
+
+message GetAllAccountsRequest {}
+
+message GetAllAccountsResponse {
+  map<string, double> accounts = 1;
+}
+service AccountSyncService {
+  rpc GetAllAccounts (GetAllAccountsRequest) returns (GetAllAccountsResponse);
+}
+
+message SetCrossPartTransRequest{
+string accId = 1;
+double amount = 2;
+bool isDebit =3;
+bool isSentByPrimary = 4;
+string txId = 5;
+}
+message SetCrossPartTransResponse{
+bool status = 1;
+}
+service SetCrossPartTransService{
+rpc setTransaction(SetCrossPartTransRequest) returns (SetCrossPartTransResponse);
 }
