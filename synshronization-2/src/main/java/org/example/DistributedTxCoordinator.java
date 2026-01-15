@@ -41,7 +41,7 @@ public class DistributedTxCoordinator extends DistributedTx {
             String dataString = new String(data);
             if (!VOTE_COMMIT.equals(dataString)) {
                 System.out.println("Child Path : " + path + " caused to transaction abort. Sending GLOBAL_ABORT");
-                sendGlobalAbout();
+                sendGlobalAbort();
                 return (false);
             }
         }
@@ -59,7 +59,7 @@ public class DistributedTxCoordinator extends DistributedTx {
         }
     }
 
-    public void sendGlobalAbout() throws InterruptedException, KeeperException {
+    public void sendGlobalAbort() throws InterruptedException, KeeperException {
         if (currentTransaction != null) {
             System.out.println("Send Global abort for Transaction : " + currentTransaction);
             client.write(currentTransaction, DistributedTxCoordinator.GLOBAL_ABORT.getBytes(StandardCharsets.UTF_8));

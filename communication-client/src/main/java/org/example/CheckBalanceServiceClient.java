@@ -212,7 +212,7 @@ public class CheckBalanceServiceClient {
         System.out.println("To Account: " + toAccId + " (Partition " + getPartitionForAccount(toAccId) + ")");
         System.out.println("Amount: " + amount + " LKR");
 
-        // Step 1: Debit from source partition
+        //Debit from source partition
         ensureConnection(fromAccId);
         SetCrossPartTransResponse debitResponse = debitFromSourcePartition(fromAccId, amount);
 
@@ -221,29 +221,28 @@ public class CheckBalanceServiceClient {
             return;
         }
 
-        System.out.println("\nDebit successful from source partition");
+        String transactionId = debitResponse.getTransactionId();
+        System.out.println("\nDebit successful from source partition (TxID: " + transactionId + ")");
 
-        // Step 2: Credit to destination partition
+        //Credit to destination partition
         closeConnection();
         ensureConnection(toAccId);
         SetCrossPartTransResponse creditResponse = creditToDestinationPartition(toAccId, amount);
 
+        //Send acknowledgment to source partition
+        closeConnection();
+        ensureConnection(fromAccId);
+
         if (!creditResponse.getStatus()) {
             System.out.println("\nCredit rejected by destination partition");
-            System.out.println("\nRolling back transaction...");
-
-            // Step 3: Rollback - credit back to source
-            closeConnection();
-            ensureConnection(fromAccId);
-            SetCrossPartTransResponse rollbackResponse = rollbackSourcePartition(fromAccId, amount);
-
-            if (rollbackResponse.getStatus()) {
-                System.out.println("\nTransaction rolled back successfully");
-            } else {
-                System.out.println("\nCRITICAL: Rollback failed! Manual intervention required.");
-            }
+            System.out.println("\nSending FAILURE acknowledgment - server will auto-rollback");
+            sendAcknowledgment(transactionId, false);
             return;
         }
+
+        System.out.println("\nCredit successful at destination partition");
+        System.out.println("\nSending SUCCESS acknowledgment to complete transaction");
+        sendAcknowledgment(transactionId, true);
 
         System.out.println("\nCross-partition transfer completed successfully");
     }
@@ -258,8 +257,21 @@ public class CheckBalanceServiceClient {
         return setTransaction(accountId, amount, false);
     }
 
-    private SetCrossPartTransResponse rollbackSourcePartition(String accountId, double amount) {
-        System.out.println("\nReverting debit: crediting " + amount + " LKR back to account " + accountId);
-        return setTransaction(accountId, amount, false);
+    private void sendAcknowledgment(String transactionId, boolean success) {
+        try {
+            AckCrossPartTransRequest request = AckCrossPartTransRequest
+                    .newBuilder()
+                    .setTransactionId(transactionId)
+                    .setSuccess(success)
+                    .build();
+
+            AckCrossPartTransResponse response = setCrossPartTransClient.acknowledgeCrossPartTrans(request);
+
+            if (response.getAcknowledged()) {
+                System.out.println("Acknowledgment sent and confirmed by server");
+            }
+        } catch (Exception e) {
+            System.err.println("Failed to send acknowledgment: " + e.getMessage());
+        }
     }
 }

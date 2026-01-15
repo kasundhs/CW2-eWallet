@@ -3,6 +3,8 @@ package org.example;
 import ds.tutorial.communication.grpc.generated.SetCrossPartTransRequest;
 import ds.tutorial.communication.grpc.generated.SetCrossPartTransResponse;
 import ds.tutorial.communication.grpc.generated.SetCrossPartTransServiceGrpc;
+import ds.tutorial.communication.grpc.generated.AckCrossPartTransRequest;
+import ds.tutorial.communication.grpc.generated.AckCrossPartTransResponse;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import javafx.util.Pair;
@@ -11,6 +13,10 @@ import org.apache.zookeeper.KeeperException;
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.Timer;
+import java.util.TimerTask;
 
 public class SetCrossPartTransServiceImpl extends SetCrossPartTransServiceGrpc.SetCrossPartTransServiceImplBase
         implements DistributedTxListner {
@@ -22,8 +28,25 @@ public class SetCrossPartTransServiceImpl extends SetCrossPartTransServiceGrpc.S
     private Pair<String, Double> tempDataHolder;
     private boolean transactionStatus = false;
 
+    // Store pending debit transactions waiting for acknowledgment
+    private Map<String, PendingTransaction> pendingDebits = new ConcurrentHashMap<>();
+    private static final long ACK_TIMEOUT_MS = 2000; // 2 seconds timeout
+
     public SetCrossPartTransServiceImpl(BankServer server) {
         this.server = server;
+    }
+
+    // private class to track pending transactions
+    private class PendingTransaction {
+        String accountId;
+        double amount;
+        Timer timer;
+        boolean isRolledBack = false;
+
+        PendingTransaction(String accountId, double amount) {
+            this.accountId = accountId;
+            this.amount = amount;
+        }
     }
 
     @Override
@@ -33,6 +56,7 @@ public class SetCrossPartTransServiceImpl extends SetCrossPartTransServiceGrpc.S
         String accountId = request.getAccId();
         double amount = request.getAmount();
         boolean isDebit = request.getIsDebit();
+        String transactionId = UUID.randomUUID().toString();
 
         if (server.isLeader()) {
             // Act as primary
@@ -51,6 +75,11 @@ public class SetCrossPartTransServiceImpl extends SetCrossPartTransServiceGrpc.S
                     updateSecondaryServers(accountId, amount, isDebit);
                     transactionStatus = ((DistributedTxCoordinator) server.getCrossTransferTransact()).perform();
                     System.out.println("Cross-partition transaction status: " + transactionStatus);
+
+                    // If this is a successful debit, start timeout timer
+                    if (transactionStatus && isDebit) {
+                        startAckTimeout(transactionId, accountId, amount);
+                    }
                 }
             } catch (Exception e) {
                 System.out.println("Error in cross-partition transaction: " + e.getMessage());
@@ -85,10 +114,33 @@ public class SetCrossPartTransServiceImpl extends SetCrossPartTransServiceGrpc.S
         SetCrossPartTransResponse response = SetCrossPartTransResponse
                 .newBuilder()
                 .setStatus(transactionStatus)
+                .setTransactionId(transactionId)
                 .build();
 
         responseObserver.onNext(response);
         responseObserver.onCompleted();
+    }
+
+    // If ack is not received
+    private void startAckTimeout(String transactionId, String accountId, double amount) {
+        PendingTransaction pending = new PendingTransaction(accountId, amount);
+        pendingDebits.put(transactionId, pending);
+
+        System.out.println("Starting ACK timeout for transaction: " + transactionId);
+
+        pending.timer = new Timer();
+        pending.timer.schedule(new TimerTask() {
+            @Override
+            public void run() {
+                PendingTransaction pendingTrans = pendingDebits.get(transactionId);
+                if (pendingTrans != null && !pendingTrans.isRolledBack) {
+                    System.out.println("ACK TIMEOUT: Rolling back transaction " + transactionId);
+                    pendingTrans.isRolledBack = true; // avoid retry
+                    performRollback(pendingTrans);
+                    pendingDebits.remove(transactionId);
+                }
+            }
+        }, ACK_TIMEOUT_MS);
     }
 
     private void startDistributedTx(String accountId, double amount, boolean isDebit) {
@@ -187,5 +239,65 @@ public class SetCrossPartTransServiceImpl extends SetCrossPartTransServiceGrpc.S
         System.out.println("Cross-partition transaction: GLOBAL ABORT");
         clearTemp();
         transactionStatus = false;
+    }
+
+    // New method to handle acknowledgments
+    @Override
+    public void acknowledgeCrossPartTrans(AckCrossPartTransRequest request,
+            io.grpc.stub.StreamObserver<AckCrossPartTransResponse> responseObserver) {
+
+        String transactionId = request.getTransactionId();
+        boolean success = request.getSuccess();
+
+        System.out.println("Received ACK for transaction: " + transactionId + ", Success: " + success);
+
+        PendingTransaction pending = pendingDebits.get(transactionId);
+
+        if (pending != null && !pending.isRolledBack) {
+            // Cancel the timeout timer
+            if (pending.timer != null) {
+                pending.timer.cancel();
+            }
+
+            if (success) {
+                System.out.println("ACK SUCCESS: Finalizing debit for account " + pending.accountId);
+                // Transaction is already committed, just cleanup
+            } else {
+                System.out.println("ACK FAILURE: Rolling back debit for account " + pending.accountId);
+                // Rollback the debit by crediting back
+                performRollback(pending);
+            }
+
+            pendingDebits.remove(transactionId);
+        } else if (pending != null && pending.isRolledBack) {
+            System.out.println("Transaction already rolled back due to timeout");
+        } else {
+            System.out.println("Unknown transaction ID: " + transactionId);
+        }
+
+        AckCrossPartTransResponse response = AckCrossPartTransResponse
+                .newBuilder()
+                .setAcknowledged(true)
+                .build();
+
+        responseObserver.onNext(response);
+        responseObserver.onCompleted();
+    }
+
+    private void performRollback(PendingTransaction pending) {
+        try {
+            System.out.println(
+                    "Performing rollback: crediting " + pending.amount + " back to account " + pending.accountId);
+
+            // Start a new transaction to credit back
+            startDistributedTx(pending.accountId, pending.amount, false);
+            updateSecondaryServers(pending.accountId, pending.amount, false);
+            boolean rollbackStatus = ((DistributedTxCoordinator) server.getCrossTransferTransact()).perform();
+
+            System.out.println("Rollback status: " + rollbackStatus);
+        } catch (Exception e) {
+            System.err.println("Rollback failed: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
 }

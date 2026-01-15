@@ -57,7 +57,18 @@ string txId = 5;
 }
 message SetCrossPartTransResponse{
 bool status = 1;
+string transactionId = 2;
 }
+
+message AckCrossPartTransRequest{
+string transactionId = 1;
+bool success = 2;
+}
+message AckCrossPartTransResponse{
+bool acknowledged = 1;
+}
+
 service SetCrossPartTransService{
 rpc setTransaction(SetCrossPartTransRequest) returns (SetCrossPartTransResponse);
+rpc acknowledgeCrossPartTrans(AckCrossPartTransRequest) returns (AckCrossPartTransResponse);
 }
