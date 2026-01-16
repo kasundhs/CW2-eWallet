@@ -212,7 +212,7 @@ public class CheckBalanceServiceClient {
         System.out.println("To Account: " + toAccId + " (Partition " + getPartitionForAccount(toAccId) + ")");
         System.out.println("Amount: " + amount + " LKR");
 
-        //Debit from source partition
+        // Debit from source partition
         ensureConnection(fromAccId);
         SetCrossPartTransResponse debitResponse = debitFromSourcePartition(fromAccId, amount);
 
@@ -221,28 +221,38 @@ public class CheckBalanceServiceClient {
             return;
         }
 
-        String transactionId = debitResponse.getTransactionId();
-        System.out.println("\nDebit successful from source partition (TxID: " + transactionId + ")");
+        String debitTransactionId = debitResponse.getTransactionId();
+        System.out.println("\nDebit successful from source partition (TxID: " + debitTransactionId + ")");
 
-        //Credit to destination partition
+        // Credit to destination partition
         closeConnection();
         ensureConnection(toAccId);
         SetCrossPartTransResponse creditResponse = creditToDestinationPartition(toAccId, amount);
 
-        //Send acknowledgment to source partition
-        closeConnection();
-        ensureConnection(fromAccId);
-
         if (!creditResponse.getStatus()) {
             System.out.println("\nCredit rejected by destination partition");
-            System.out.println("\nSending FAILURE acknowledgment - server will auto-rollback");
-            sendAcknowledgment(transactionId, false);
+            System.out.println("\nSending FAILURE acknowledgment to source - server will auto-rollback");
+
+            // Send failure ACK to source partition
+            closeConnection();
+            ensureConnection(fromAccId);
+            sendAcknowledgment(debitTransactionId, false);
             return;
         }
 
-        System.out.println("\nCredit successful at destination partition");
-        System.out.println("\nSending SUCCESS acknowledgment to complete transaction");
-        sendAcknowledgment(transactionId, true);
+        String creditTransactionId = creditResponse.getTransactionId();
+        System.out.println("\nCredit successful at destination partition (TxID: " + creditTransactionId + ")");
+
+        // Send SUCCESS acknowledgment to BOTH partitions
+        System.out.println("\nSending SUCCESS acknowledgments to both partitions...");
+
+        // ACK to destination partition (credit)
+        sendAcknowledgment(creditTransactionId, true);
+
+        // ACK to source partition (debit)
+        closeConnection();
+        ensureConnection(fromAccId);
+        sendAcknowledgment(debitTransactionId, true);
 
         System.out.println("\nCross-partition transfer completed successfully");
     }

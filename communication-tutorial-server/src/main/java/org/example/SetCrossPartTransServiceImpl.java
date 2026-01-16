@@ -40,12 +40,14 @@ public class SetCrossPartTransServiceImpl extends SetCrossPartTransServiceGrpc.S
     private class PendingTransaction {
         String accountId;
         double amount;
+        boolean isDebit;
         Timer timer;
         boolean isRolledBack = false;
 
-        PendingTransaction(String accountId, double amount) {
+        PendingTransaction(String accountId, double amount, boolean isDebit) {
             this.accountId = accountId;
             this.amount = amount;
+            this.isDebit = isDebit;
         }
     }
 
@@ -76,9 +78,9 @@ public class SetCrossPartTransServiceImpl extends SetCrossPartTransServiceGrpc.S
                     transactionStatus = ((DistributedTxCoordinator) server.getCrossTransferTransact()).perform();
                     System.out.println("Cross-partition transaction status: " + transactionStatus);
 
-                    // If this is a successful debit, start timeout timer
-                    if (transactionStatus && isDebit) {
-                        startAckTimeout(transactionId, accountId, amount);
+                    // Start timeout timer for both debit and credit operations
+                    if (transactionStatus) {
+                        startAckTimeout(transactionId, accountId, amount, isDebit);
                     }
                 }
             } catch (Exception e) {
@@ -122,11 +124,12 @@ public class SetCrossPartTransServiceImpl extends SetCrossPartTransServiceGrpc.S
     }
 
     // If ack is not received
-    private void startAckTimeout(String transactionId, String accountId, double amount) {
-        PendingTransaction pending = new PendingTransaction(accountId, amount);
+    private void startAckTimeout(String transactionId, String accountId, double amount, boolean isDebit) {
+        PendingTransaction pending = new PendingTransaction(accountId, amount, isDebit);
         pendingDebits.put(transactionId, pending);
 
-        System.out.println("Starting ACK timeout for transaction: " + transactionId);
+        System.out.println("Starting ACK timeout for transaction: " + transactionId +
+                " (" + (isDebit ? "DEBIT" : "CREDIT") + ")");
 
         pending.timer = new Timer();
         pending.timer.schedule(new TimerTask() {
@@ -286,12 +289,17 @@ public class SetCrossPartTransServiceImpl extends SetCrossPartTransServiceGrpc.S
 
     private void performRollback(PendingTransaction pending) {
         try {
-            System.out.println(
-                    "Performing rollback: crediting " + pending.amount + " back to account " + pending.accountId);
+            // For debit: credit back the amount
+            // For credit: debit back the amount
+            boolean rollbackIsDebit = !pending.isDebit;
 
-            // Start a new transaction to credit back
-            startDistributedTx(pending.accountId, pending.amount, false);
-            updateSecondaryServers(pending.accountId, pending.amount, false);
+            System.out.println(
+                    "Performing rollback: " + (rollbackIsDebit ? "debiting" : "crediting") +
+                            " " + pending.amount + " to/from account " + pending.accountId);
+
+            // Start a new transaction to reverse the operation
+            startDistributedTx(pending.accountId, pending.amount, rollbackIsDebit);
+            updateSecondaryServers(pending.accountId, pending.amount, rollbackIsDebit);
             boolean rollbackStatus = ((DistributedTxCoordinator) server.getCrossTransferTransact()).perform();
 
             System.out.println("Rollback status: " + rollbackStatus);
