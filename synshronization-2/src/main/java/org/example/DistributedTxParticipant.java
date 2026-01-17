@@ -19,10 +19,10 @@ public class DistributedTxParticipant extends DistributedTx implements Watcher {
     }
 
     @Override
-    void onStartTransaction(String transactionId, String participantId) {
+    void onStartTransaction(String transactionId, String randomId) {
         try {
             transactionRoot = "/" + transactionId;
-            currentTransaction = transactionRoot + PARTICIPANT_PREFIX + participantId;
+            currentTransaction = transactionRoot + PARTICIPANT_PREFIX + randomId;
             client.createNode(currentTransaction, true, CreateMode.EPHEMERAL, "".getBytes(StandardCharsets.UTF_8));
             client.addWatch(transactionRoot);
         } catch (Exception e) {
@@ -32,7 +32,7 @@ public class DistributedTxParticipant extends DistributedTx implements Watcher {
 
     public void voteCommit() {
         try {
-            // Wait until snapshot is ready before committing
+            // Wait until snapshot is ready before committing. This prevents primary mirror syncing errors
             waitForSnapshot();
             if (currentTransaction != null) {
                 System.out.println("Voting to commit the transaction : " + currentTransaction);

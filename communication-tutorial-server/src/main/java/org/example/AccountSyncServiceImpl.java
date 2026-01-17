@@ -3,7 +3,7 @@ package org.example;
 import ds.tutorial.communication.grpc.generated.*;
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
-
+// For primary server syncing
 public class AccountSyncServiceImpl extends AccountSyncServiceGrpc.AccountSyncServiceImplBase {
 
     private final BankServer server;

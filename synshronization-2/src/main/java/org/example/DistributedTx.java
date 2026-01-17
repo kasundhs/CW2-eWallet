@@ -24,11 +24,11 @@ public abstract class DistributedTx implements Watcher {
         DistributedTx.zookeeperUrl = zookeeperUrl;
     }
 
-    public void start (String transactionId, String participantId) throws IOException {
+    public void start (String transactionId, String randomId) throws IOException {
         client = new ZooKeeperClient(zookeeperUrl,5000,this);
-        onStartTransaction(transactionId,participantId);
+        onStartTransaction(transactionId,randomId);
     }
-    abstract void onStartTransaction(String transactionId, String participantId);
+    abstract void onStartTransaction(String transactionId, String randomId);
     public void process(WatchedEvent watchedEvent){
 
     }

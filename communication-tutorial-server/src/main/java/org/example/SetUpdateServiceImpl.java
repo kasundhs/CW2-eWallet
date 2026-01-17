@@ -11,7 +11,7 @@ import org.apache.zookeeper.KeeperException;
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
-
+// Same partition transfers
 public class SetUpdateServiceImpl extends SetUpdateServiceGrpc.SetUpdateServiceImplBase
         implements DistributedTxListner {
     private BankServer server;

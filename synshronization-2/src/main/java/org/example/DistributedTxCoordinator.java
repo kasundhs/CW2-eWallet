@@ -13,7 +13,7 @@ public class DistributedTxCoordinator extends DistributedTx {
     }
 
     @Override
-    void onStartTransaction(String transactionId, String participantId) {
+    void onStartTransaction(String transactionId, String randomId) {
         try {
             currentTransaction = "/" + transactionId;
 

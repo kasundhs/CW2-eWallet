@@ -17,7 +17,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.Timer;
 import java.util.TimerTask;
-
+// For cross partition transfers
 public class SetCrossPartTransServiceImpl extends SetCrossPartTransServiceGrpc.SetCrossPartTransServiceImplBase
         implements DistributedTxListner {
 

@@ -27,9 +27,7 @@ public class CheckBalanceServiceClient {
         }
 
         CheckBalanceServiceClient client = new CheckBalanceServiceClient(args[0]);
-        // client.initializeConnection();
         client.processUserRequests();
-        // client.closeConnection();
     }
 
     public CheckBalanceServiceClient(String mode) throws InterruptedException, IOException {
@@ -233,7 +231,7 @@ public class CheckBalanceServiceClient {
             System.out.println("\nCredit rejected by destination partition");
             System.out.println("\nSending FAILURE acknowledgment to source - server will auto-rollback");
 
-            // Send failure ACK to source partition
+            // Send failure ACK to source partition for rollback
             closeConnection();
             ensureConnection(fromAccId);
             sendAcknowledgment(debitTransactionId, false);

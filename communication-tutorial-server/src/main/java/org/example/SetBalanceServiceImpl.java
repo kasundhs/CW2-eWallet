@@ -11,7 +11,7 @@ import org.apache.zookeeper.KeeperException;
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
-
+// For account creation
 public class SetBalanceServiceImpl extends SetBalanceServiceGrpc.SetBalanceServiceImplBase
         implements DistributedTxListner {
     private ManagedChannel channel = null;

@@ -4,7 +4,7 @@ import ds.tutorial.communication.grpc.generated.CheckBalanceResponse;
 import ds.tutorial.communication.grpc.generated.CheckBalanceServiceGrpc;
 
 import java.util.Random;
-
+// For balance inquiries
 public class CheckBalanceServiceImpl extends CheckBalanceServiceGrpc.CheckBalanceServiceImplBase {
     private BankServer server;
     public CheckBalanceServiceImpl(BankServer server){
